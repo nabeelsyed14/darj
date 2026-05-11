@@ -1,0 +1,43 @@
+/* Glassmorphism */
+.glass-sidebar {
+  background: rgba(249, 250, 251, 0.82) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid rgba(79, 70, 229, 0.08) !important;
+}
+.glass-sidebar .ant-menu {
+  background: transparent !important;
+}
+.glass-sidebar .ant-menu-item {
+  border-radius: 10px;
+  margin: 2px 8px !important;
+  transition: all 0.2s ease;
+}
+.glass-sidebar .ant-menu-item-selected {
+  background: rgba(79, 70, 229, 0.1) !important;
+  color: #4F46E5 !important;
+  font-weight: 600;
+}
+.glass-sidebar .ant-menu-item:hover {
+  background: rgba(79, 70, 229, 0.06) !important;
+}
+
+/* Modal glass */
+.ant-modal-content {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  border-radius: 16px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 20px 60px rgba(79,70,229,0.1) !important;
+}
+
+/* Dropdown glass */
+.ant-select-dropdown {
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 12px !important;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04), 0 12px 40px rgba(79,70,229,0.08) !important;
+}

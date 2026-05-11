@@ -1,0 +1,6 @@
+const { copyFileSync, mkdirSync } = require('fs')
+mkdirSync('dist/main', { recursive: true })
+copyFileSync('src/main/db/schema.sql', 'dist/main/schema.sql')
+copyFileSync('node_modules/sql.js/dist/sql-wasm.wasm', 'dist/main/sql-wasm.wasm')
+copyFileSync('assets/logo.png', 'dist/logo.png')
+console.log('Post-build: copied schema.sql, sql-wasm.wasm, and logo.png')
