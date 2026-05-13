@@ -5,7 +5,7 @@ enrolment, attendance, marks, promotions, and year-end rollover. Fully
 offline, single `.exe` installer, all data stays on the school's computer.
 
 <p align="center">
-  <img src="assets/logo.png" alt="Darj Logo" width="120" />
+  <img src="assets/logo.png" alt="Darj Logo" />
 </p>
 
 ## Problem Statement
