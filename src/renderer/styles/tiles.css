@@ -2,13 +2,13 @@
 .ant-card {
   border-radius: 20px !important;
   border: 1px solid rgba(226, 232, 240, 0.8) !important;
-  border-top: 3px solid #6366F1 !important;
+  border-top: 3px solid #2A6372 !important;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
   overflow: hidden;
 }
 .ant-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 16px 40px rgba(99,102,241,0.12) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 16px 40px rgba(42,99,114,0.14) !important;
 }
 .ant-card::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit;
@@ -20,16 +20,16 @@
 /* Stat cards with distinct backgrounds */
 .stat-card {
   border-radius: 20px; padding: 24px 28px;
-  border: 1px solid rgba(226, 232, 240, 0.8); border-top: 3px solid #6366F1;
+  border: 1px solid rgba(226, 232, 240, 0.8); border-top: 3px solid #2A6372;
   position: relative; overflow: hidden;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
 }
-.stat-card:nth-child(1) { background: #EEF2FF; }  /* light indigo */
-.stat-card:nth-child(2) { background: #FFF7ED; }  /* light orange */
-.stat-card:nth-child(3) { background: #F0FDF4; }  /* light green */
-.stat-card:nth-child(4) { background: #EFF6FF; }  /* light blue */
-.stat-card:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 16px 40px rgba(99,102,241,0.1); }
-.stat-card .stat-value { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #4338CA, #6366F1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.stat-card:nth-child(1) { background: #EAF1F3; }
+.stat-card:nth-child(2) { background: #FCF4DF; }
+.stat-card:nth-child(3) { background: #EDF4F6; }
+.stat-card:nth-child(4) { background: #F6F7F4; }
+.stat-card:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 16px 40px rgba(42,99,114,0.12); }
+.stat-card .stat-value { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #2A6372, #3C7D8E); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .stat-card .stat-label { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748B; margin-top: 4px; }
 .stat-card .stat-icon { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 40px; opacity: 0.1; }
 

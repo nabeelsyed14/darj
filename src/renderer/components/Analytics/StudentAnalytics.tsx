@@ -125,7 +125,7 @@ export default function StudentAnalytics() {
     } finally { setLoading(false) }
   }
 
-  const colors = ['#6366F1', '#F97316', '#0D9488', '#8B5CF6', '#EC4899', '#14B8A6']
+  const colors = ['#2A6372', '#D1A74B', '#0D9488', '#C79E45', '#EC4899', '#14B8A6']
 
   return (
     <div>
@@ -144,7 +144,7 @@ export default function StudentAnalytics() {
       </Space>
 
       {atRisk.length > 0 && (
-        <Card size="small" style={{ marginBottom: 24, background: '#FFF7ED', borderColor: '#FDBA74', borderTop: '3px solid #F97316' }}
+        <Card size="small" style={{ marginBottom: 24, background: '#FFF7ED', borderColor: '#FDBA74', borderTop: '3px solid #D1A74B' }}
           title={`At-Risk Students (${atRisk.length})`}>
           {atRisk.map((s) => (
             <Tag key={s.id} color="orange" style={{ marginBottom: 4 }}>{s.student_uid} — {s.field_values?.full_name || 'Unknown'} ({s.avgMarks}%)</Tag>
@@ -180,8 +180,8 @@ export default function StudentAnalytics() {
               <YAxis domain={[0, 100]} />
               <Tooltip formatter={(v: any) => `${v}%`} />
               <ReferenceLine y={passingThreshold} stroke="#EF4444" strokeDasharray="5 5" label={{ value: "Passing", position: "insideLeft" }} />
-              <ReferenceLine y={classAverage} stroke="#6366F1" strokeDasharray="3 3" label={{ value: "Avg", position: "insideLeft" }} />
-              <Bar dataKey="marks" fill="#6366F1" radius={[6, 6, 0, 0]} maxBarSize={40} />
+              <ReferenceLine y={classAverage} stroke="#2A6372" strokeDasharray="3 3" label={{ value: "Avg", position: "insideLeft" }} />
+              <Bar dataKey="marks" fill="#2A6372" radius={[6, 6, 0, 0]} maxBarSize={40} />
               <Bar dataKey="noData" fill="#E2E8F0" radius={[6, 6, 0, 0]} maxBarSize={40} />
             </BarChart>
           </ResponsiveContainer>

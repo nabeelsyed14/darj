@@ -63,7 +63,7 @@ export default function StudentProfile({ student, onViewAnalytics, onStudentUpda
         {student.photo ? (
           <img src={student.photo} alt="" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover' }} />
         ) : (
-          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, #4F46E5, #6366F1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>👤</div>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, #2A6372, #3C7D8E)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>👤</div>
         )}
         <Typography.Title level={5} style={{ margin: 0 }}>{student.field_values?.full_name || student.student_uid}</Typography.Title>
       </div>

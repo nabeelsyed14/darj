@@ -206,7 +206,7 @@ export default function ExportPanel() {
   return (
     <div>
       <Title level={4}>{t('sidebar.export')}</Title>
-      <Card style={{ maxWidth: 400, borderTop: '3px solid #6366F1' }}>
+      <Card style={{ maxWidth: 400, borderTop: '3px solid #2A6372' }}>
         <Space direction="vertical" style={{ width: '100%' }}>
           <Text>Export data as professionally formatted Excel (.xlsx)</Text>
           <Select value={exportType} onChange={setExportType} options={[

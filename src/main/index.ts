@@ -33,7 +33,10 @@ let mainWindow: BrowserWindow | null = null
 
 function createWindow() {
   log('createWindow called, __dirname=' + __dirname)
-  const iconPath = join(__dirname, '../../assets/logo.png')
+  const iconPath = app.isPackaged
+    ? join(process.resourcesPath, 'assets', 'logo.ico')
+    : join(app.getAppPath(), 'assets', 'logo.ico')
+  const icon = nativeImage.createFromPath(iconPath)
   
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -42,7 +45,7 @@ function createWindow() {
     minHeight: 600,
     show: false,
     frame: false,
-    icon: nativeImage.createFromPath(iconPath),
+    icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -75,6 +78,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   log('app.whenReady fired')
+  app.setAppUserModelId('com.darj.app')
   Menu.setApplicationMenu(null)
   try {
     await initDb()
@@ -125,6 +129,7 @@ ipcMain.handle('auth:changePassword', (_e, current: string, newPass: string) => 
 ipcMain.handle('students:create', (_e, data) => { const r = students.createStudent(data); saveDb(); return r })
 ipcMain.handle('students:get', (_e, id: number) => students.getStudent(id))
 ipcMain.handle('students:getBySection', (_e, sectionId: number) => students.getStudentsBySection(sectionId))
+ipcMain.handle('students:getAllBySection', (_e, sectionId: number) => students.getAllStudentsBySection(sectionId))
 ipcMain.handle('students:update', (_e, id: number, data) => { students.updateStudent(id, data); saveDb() })
 ipcMain.handle('students:withdraw', (_e, id: number) => { students.withdrawStudent(id); saveDb() })
 ipcMain.handle('students:move', (_e, id: number, sectionId: number) => { students.moveStudent(id, sectionId); saveDb() })
@@ -227,6 +232,19 @@ ipcMain.handle('app:restore', async () => {
     return { success: true }
   }
   return { success: false }
+})
+
+ipcMain.handle('app:saveToDesktop', async (_e, filename: string, data: number[]) => {
+  try {
+    const desktopPath = app.getPath('desktop')
+    const safeName = String(filename || 'Darj_Export.xlsx').replace(/[\\/:*?"<>|]/g, '_')
+    const fullPath = join(desktopPath, safeName)
+    writeFileSync(fullPath, Buffer.from(data))
+    return { success: true, path: fullPath }
+  } catch (e: any) {
+    log('app:saveToDesktop error: ' + e.message)
+    return { success: false, error: e?.message || 'Failed to save file' }
+  }
 })
 
 

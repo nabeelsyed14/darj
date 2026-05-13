@@ -33,10 +33,21 @@ export default function Settings() {
 
   const handleSchoolSave = async () => {
     if (!school) return
-    const values = await schoolForm.validateFields()
-    await window.api.schools.update({ id: school.id, ...values })
-    updateSchool(values)
-    message.success(t('common.success'))
+    try {
+      const values = await schoolForm.validateFields()
+      await window.api.schools.update({
+        id: school.id,
+        name: values.name || school.name,
+        address: values.address ?? '',
+        principal_name: school.principal_name || '',
+        academic_year: values.academic_year || school.academic_year,
+        uid_prefix: values.uid_prefix || school.uid_prefix
+      })
+      updateSchool(values)
+      message.success(t('common.success'))
+    } catch (e: any) {
+      message.error(e?.message || t('errors.generic'))
+    }
   }
 
   const handlePasswordChange = async () => {
@@ -100,9 +111,6 @@ export default function Settings() {
           </Form.Item>
           <Form.Item name="address" label={t('wizard.step1.address')}>
             <Input.TextArea rows={2} />
-          </Form.Item>
-          <Form.Item name="principal_name" label={t('wizard.step1.principalName')}>
-            <Input />
           </Form.Item>
           <Form.Item name="academic_year" label={t('wizard.step1.academicYear')}>
             <Select showSearch placeholder="Academic year" style={{ width: 200 }}
@@ -173,7 +181,7 @@ export default function Settings() {
           <Form.Item name="newPassword" label={t('login.newPassword')} rules={[{ required: true }]}>
             <Input.Password />
           </Form.Item>
-          <Form.Item name="confirmPassword" dependencies={['newPassword']} rules={[{ required: true }, ({ getFieldValue }) => ({ validator(_, value) { if (!value || getFieldValue('newPassword') === value) return Promise.resolve(); return Promise.reject(new Error(t('wizard.step5.passwordsMismatch'))) } })]}>
+          <Form.Item name="confirmPassword" label={t('login.confirmPassword')} dependencies={['newPassword']} rules={[{ required: true }, ({ getFieldValue }) => ({ validator(_, value) { if (!value || getFieldValue('newPassword') === value) return Promise.resolve(); return Promise.reject(new Error(t('wizard.step5.passwordsMismatch'))) } })]}>
             <Input.Password />
           </Form.Item>
           <Button type="primary" htmlType="submit">{t('common.save')}</Button>

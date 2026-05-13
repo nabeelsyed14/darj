@@ -22,7 +22,14 @@ export function getDefaultFields(): { field_key: string; display_name: string; f
 export function createFields(schoolId: number, fields: { field_key: string; display_name: string; field_type: string; is_searchable: number }[]): void {
   fields.forEach((f, i) => {
     queryRun(
-      'INSERT INTO student_fields (school_id, field_key, display_name, field_type, is_searchable, display_order) VALUES (?, ?, ?, ?, ?, ?)',
+      `INSERT INTO student_fields (school_id, field_key, display_name, field_type, is_searchable, display_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, 1)
+       ON CONFLICT(school_id, field_key) DO UPDATE SET
+         display_name = excluded.display_name,
+         field_type = excluded.field_type,
+         is_searchable = excluded.is_searchable,
+         display_order = excluded.display_order,
+         is_active = 1`,
       [schoolId, f.field_key, f.display_name, f.field_type, f.is_searchable, i]
     )
   })

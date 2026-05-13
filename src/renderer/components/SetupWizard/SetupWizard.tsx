@@ -22,6 +22,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
 
   const [modules, setModules] = useState<string[]>(['attendance', 'marks', 'promotions'])
   const [classes, setClasses] = useState<{ name: string; sections: { name: string; teacher: string }[] }[]>([])
+  const [finalClass, setFinalClass] = useState<string | undefined>(undefined)
   const [fields, setFields] = useState<any[]>([])
 
   const moduleOptions = [
@@ -40,7 +41,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   }
 
   const handleFinish = async () => {
-    const schoolValues = schoolForm.getFieldsValue()
+    const schoolValues = schoolForm.getFieldsValue(true)
     setLoading(true)
 
     try {
@@ -64,6 +65,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
           if (!sec.name.trim()) continue
           await window.api.sections.create(classId, sec.name.trim(), sec.teacher.trim() || null)
         }
+      }
+
+      const resolvedFinalClass = finalClass || classes[classes.length - 1]?.name
+      if (resolvedFinalClass?.trim()) {
+        await window.api.settings.set(schoolId, 'final_class', resolvedFinalClass.trim())
       }
 
       await window.api.fields.create(schoolId, fields.filter((f: any) => f.field_key && f.display_name).map((f: any) => ({
@@ -132,7 +138,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         <Steps current={current} items={steps} style={{ marginBottom: 32 }} />
 
         {current === 0 && (
-          <Form form={schoolForm} layout="vertical">
+          <Form form={schoolForm} layout="vertical" initialValues={{ uidPrefix: 'SCH' }}>
             <Form.Item name="schoolName" label={t('wizard.step1.schoolName')} rules={[{ required: true }]}>
               <Input size="large" />
             </Form.Item>
@@ -150,7 +156,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 })()} />
             </Form.Item>
             <Form.Item name="uidPrefix" label={t('wizard.step1.uidPrefix')} tooltip={t('wizard.step1.uidPrefixHint')}>
-              <Input size="large" defaultValue="SCH" />
+              <Input size="large" />
             </Form.Item>
           </Form>
         )}
@@ -191,6 +197,17 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               </Card>
             ))}
             <Button type="dashed" onClick={addClass} icon={<PlusOutlined />}>{t('wizard.step3.addClass')}</Button>
+            <Form layout="vertical" style={{ marginTop: 12 }}>
+              <Form.Item label="Final Class (Passout Grade)">
+                <Select
+                  value={finalClass}
+                  onChange={setFinalClass}
+                  placeholder="Select final class"
+                  style={{ width: 260 }}
+                  options={classes.filter((c) => c.name.trim()).map((c) => ({ label: c.name.trim(), value: c.name.trim() }))}
+                />
+              </Form.Item>
+            </Form>
           </Space>
         )}
 

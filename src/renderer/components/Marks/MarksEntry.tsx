@@ -155,7 +155,7 @@ export default function MarksEntry() {
         <div style={{ marginBottom: 24 }}>
           <Title level={5}>Upcoming Exams</Title>
           <Row gutter={[16, 16]}>
-            {upcomingExams.map((e) => <Col key={e.id} xs={24} sm={12} md={8}>{renderExamCard(e, '#6366F1')}</Col>)}
+            {upcomingExams.map((e) => <Col key={e.id} xs={24} sm={12} md={8}>{renderExamCard(e, '#2A6372')}</Col>)}
           </Row>
           <Space style={{ marginTop: 8 }}>
             {upcomingExams.map((e) => (
@@ -177,7 +177,7 @@ export default function MarksEntry() {
       )}
 
       {activeExam && (
-        <Card title="Enter Marks" style={{ marginBottom: 16, borderTop: '3px solid #6366F1' }}>
+        <Card title="Enter Marks" style={{ marginBottom: 16, borderTop: '3px solid #2A6372' }}>
           <Space style={{ marginBottom: 12, flexWrap: 'wrap' }}>
             <Select placeholder="Select Class" style={{ width: 160 }} value={selectedClass}
               onChange={(v) => { setSelectedClass(v); setSelectedSection(undefined) }}

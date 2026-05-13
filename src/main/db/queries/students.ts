@@ -83,6 +83,31 @@ export function getStudentsBySection(sectionId: number) {
   return students
 }
 
+export function getAllStudentsBySection(sectionId: number) {
+  const students = queryAll(
+    'SELECT * FROM students WHERE section_id = ? ORDER BY id',
+    [sectionId]
+  )
+
+  for (const student of students) {
+    const fields = queryAll(
+      `SELECT sf.field_key, sfv.value_text, sfv.value_date, sfv.value_number
+       FROM student_field_values sfv
+       JOIN student_fields sf ON sfv.field_id = sf.id
+       WHERE sfv.student_id = ? AND sf.is_active = 1
+       ORDER BY sf.display_order`,
+      [student.id]
+    )
+
+    ;(student as any).field_values = {}
+    for (const f of fields) {
+      ;(student as any).field_values[f.field_key] = f.value_date ?? f.value_number ?? f.value_text ?? ''
+    }
+  }
+
+  return students
+}
+
 export function updateStudent(id: number, data: {
   section_id?: number
   enrollment_date?: string

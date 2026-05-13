@@ -32,17 +32,17 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <ConfigProvider
         theme={{
           token: {
-            colorPrimary: '#6366F1',
-            colorSuccess: '#0D9488',
-            colorWarning: '#F59E0B',
+            colorPrimary: '#2A6372',
+            colorSuccess: '#2A6372',
+            colorWarning: '#C79E45',
             colorError: '#EF4444',
             borderRadius: 12,
             borderRadiusLG: 16,
             fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
             fontSize: 15,
             lineHeight: 1.6,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 6px 16px rgba(79,70,229,0.08)',
-            boxShadowSecondary: '0 4px 12px rgba(0,0,0,0.04), 0 12px 32px rgba(79,70,229,0.12)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 6px 16px rgba(42,99,114,0.12)',
+            boxShadowSecondary: '0 4px 12px rgba(0,0,0,0.04), 0 12px 32px rgba(42,99,114,0.16)',
             motionDurationSlow: '0.3s',
             motionEaseInOut: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
             colorBgContainer: '#FFFFFF',
@@ -55,7 +55,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             },
             Table: {
               borderRadiusLG: 12,
-              headerBg: 'rgba(79,70,229,0.04)'
+              headerBg: 'rgba(42,99,114,0.06)'
             },
             Button: {
               borderRadius: 10,

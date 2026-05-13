@@ -125,7 +125,7 @@ export default function PromotionReview() {
               </span>
             )
           })}
-          {marksMap[r.id]?.weightedAvg > 0 && <span style={{ display: 'block', color: '#6366F1', fontWeight: 600 }}>W.Avg: {marksMap[r.id]?.weightedAvg}%</span>}
+          {marksMap[r.id]?.weightedAvg > 0 && <span style={{ display: 'block', color: '#2A6372', fontWeight: 600 }}>W.Avg: {marksMap[r.id]?.weightedAvg}%</span>}
         </Text>
       )
     }},
@@ -146,7 +146,7 @@ export default function PromotionReview() {
         <Popconfirm title="Fail?" onConfirm={() => setResults((p) => ({ ...p, [r.id]: { status: 'failed' } }))}>
           <Button size="small" danger>Fail</Button>
         </Popconfirm>
-        <Button size="small" style={{ background: '#8B5CF6', borderColor: '#8B5CF6', color: '#fff' }}
+        <Button size="small" style={{ background: '#C79E45', borderColor: '#C79E45', color: '#fff' }}
           onClick={() => { setExceptionalStudent(r); setExceptionalReason('') }}>Exceptional</Button>
       </Space>
     )}
@@ -159,15 +159,15 @@ export default function PromotionReview() {
       <Space style={{ marginBottom: 16, flexWrap: 'wrap' }}>
         <Select placeholder="Select Class" style={{ width: 160 }} value={selectedClass} onChange={(v) => { setSelectedClass(v); setResults({}) }}
           options={classes.map((c) => ({ label: c.name, value: c.id }))} />
-        <Text strong style={{ color: '#6366F1' }}>Passing Threshold:</Text>
+        <Text strong style={{ color: '#2A6372' }}>Passing Threshold:</Text>
         <input type="number" min="1" max="100" value={threshold} onChange={(e) => setThreshold(Number(e.target.value))}
-          style={{ width: 60, fontWeight: 700, fontSize: 15, border: '2px solid #6366F1', textAlign: 'center', borderRadius: 8, padding: '4px 8px', color: '#6366F1' }} />
-        <Text strong style={{ color: '#6366F1' }}>%</Text>
+          style={{ width: 60, fontWeight: 700, fontSize: 15, border: '2px solid #2A6372', textAlign: 'center', borderRadius: 8, padding: '4px 8px', color: '#2A6372' }} />
+        <Text strong style={{ color: '#2A6372' }}>%</Text>
         <Button icon={<ThunderboltOutlined />} type="primary" onClick={handleAutoPromote} disabled={!selectedClass}>
           Auto-Promote
         </Button>
         {Object.keys(results).length > 0 && (
-          <><Button style={{ background: '#6366F1', borderColor: '#6366F1', color: '#fff' }} onClick={() => setShowPreview(true)}>Preview</Button>
+          <><Button style={{ background: '#2A6372', borderColor: '#2A6372', color: '#fff' }} onClick={() => setShowPreview(true)}>Preview</Button>
           <Button style={{ background: '#0D9488', borderColor: '#0D9488', color: '#fff' }} onClick={() => setShowConfirm(true)}>Save</Button></>
         )}
       </Space>
@@ -176,7 +176,7 @@ export default function PromotionReview() {
         <Row gutter={16} style={{ marginBottom: 16 }}>
           <Col span={6}><Card size="small" style={{ background: '#F0FDF4', borderTop: '3px solid #0D9488' }}><Title level={3} style={{ margin: 0 }}>{promotedCount}</Title><Text>Promoted</Text></Card></Col>
           <Col span={6}><Card size="small" style={{ background: '#FEF2F2', borderTop: '3px solid #EF4444' }}><Title level={3} style={{ margin: 0 }}>{failedCount}</Title><Text>Failed</Text></Card></Col>
-          <Col span={6}><Card size="small" style={{ background: '#F5F3FF', borderTop: '3px solid #8B5CF6' }}><Title level={3} style={{ margin: 0 }}>{exceptionalCount}</Title><Text>Exceptional</Text></Card></Col>
+          <Col span={6}><Card size="small" style={{ background: '#FCF4DF', borderTop: '3px solid #C79E45' }}><Title level={3} style={{ margin: 0 }}>{exceptionalCount}</Title><Text>Exceptional</Text></Card></Col>
           <Col span={6}><Card size="small" style={{ background: '#FFF7ED', borderTop: '3px solid #F97316' }}><Title level={3} style={{ margin: 0 }}>{pendingCount}</Title><Text>Pending</Text></Card></Col>
         </Row>
       )}

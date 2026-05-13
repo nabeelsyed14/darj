@@ -34,6 +34,8 @@ export default function StudentList() {
   const [students, setStudents] = useState<Student[]>([])
   const [sections, setSections] = useState<Section[]>([])
   const [loading, setLoading] = useState(false)
+  const [totalStudentsCount, setTotalStudentsCount] = useState(0)
+  const [activeStudentsCount, setActiveStudentsCount] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterSection, setFilterSection] = useState<number | undefined>(undefined)
   const [showForm, setShowForm] = useState(false)
@@ -49,6 +51,10 @@ export default function StudentList() {
   useEffect(() => {
     loadStudents()
   }, [filterSection, searchQuery])
+
+  useEffect(() => {
+    loadSummaryCounts()
+  }, [school])
 
   const loadSections = async () => {
     if (!school) return
@@ -87,10 +93,27 @@ export default function StudentList() {
     }
   }
 
+  const loadSummaryCounts = async () => {
+    if (!school) return
+    try {
+      const allSections = await window.api.sections.getAll(school.id)
+      let all: Student[] = []
+      for (const sec of allSections) {
+        const secStudents = await window.api.students.getAllBySection(sec.id)
+        all = [...all, ...secStudents]
+      }
+      setTotalStudentsCount(all.length)
+      setActiveStudentsCount(all.filter((s: Student) => s.status === 'active').length)
+    } catch (e: any) {
+      console.error('loadSummaryCounts error:', e)
+    }
+  }
+
   const handleWithdraw = async (student: Student) => {
     await window.api.students.withdraw(student.id)
     message.success(t('common.success'))
     loadStudents()
+    loadSummaryCounts()
   }
 
   const columns = [
@@ -102,7 +125,7 @@ export default function StudentList() {
         record.photo ? (
           <img src={record.photo} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
         ) : (
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #4F46E5, #6366F1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>👤</div>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #2A6372, #3C7D8E)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>👤</div>
         )
       )
     },
@@ -165,12 +188,12 @@ export default function StudentList() {
 
       <div className="stats-row">
         <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/students')}>
-          <div className="stat-value">{students.length}</div>
+          <div className="stat-value">{totalStudentsCount}</div>
           <div className="stat-label">{t('students.title')}</div>
           <TeamOutlined className="stat-icon" />
         </div>
         <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => { setFilterSection(undefined); loadStudents() }}>
-          <div className="stat-value">{students.filter((s: Student) => s.status === 'active').length}</div>
+          <div className="stat-value">{activeStudentsCount}</div>
           <div className="stat-label">{t('students.active')}</div>
           <TeamOutlined className="stat-icon" />
         </div>
@@ -231,7 +254,7 @@ export default function StudentList() {
         <StudentForm
           student={editingStudent}
           sections={sections}
-          onComplete={() => { setShowForm(false); setEditingStudent(null); loadStudents() }}
+          onComplete={() => { setShowForm(false); setEditingStudent(null); loadStudents(); loadSummaryCounts() }}
         />
       </Modal>
 
@@ -258,7 +281,7 @@ export default function StudentList() {
           <MoveStudent
             student={movingStudent}
             sections={sections}
-            onComplete={() => { setMovingStudent(null); loadStudents() }}
+            onComplete={() => { setMovingStudent(null); loadStudents(); loadSummaryCounts() }}
           />
         )}
       </Modal>
@@ -273,7 +296,7 @@ export default function StudentList() {
       >
         <ImportStudents
           sections={sections}
-          onComplete={() => { setShowImport(false); loadStudents() }}
+          onComplete={() => { setShowImport(false); loadStudents(); loadSummaryCounts() }}
         />
       </Modal>
     </div>

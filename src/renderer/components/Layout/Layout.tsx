@@ -17,6 +17,7 @@ import { useModuleStore } from '../../store/moduleStore'
 import { useAuthStore } from '../../store/authStore'
 import { useUiStore } from '../../store/uiStore'
 import TitleBar from './TitleBar'
+import AppLogo from '../AppLogo'
 
 const { Sider, Content } = AntLayout
 
@@ -55,13 +56,11 @@ export default function Layout() {
       <TitleBar />
       <AntLayout style={{ flex: 1, overflow: 'hidden' }}>
       <Sider width={240} style={{
-        background: 'linear-gradient(180deg, #4338CA 0%, #7C3AED 100%)',
+        background: 'linear-gradient(180deg, #1F4F5E 0%, #2A6372 58%, #3A7888 100%)',
         borderRight: 'none'
       }}>
-        <div style={{ padding: '28px 16px 20px', textAlign: 'center' }}>
-          <div style={{ borderRadius: 14, background: 'rgba(255,255,255,0.15)', padding: '8px 14px', display: 'inline-block' }}>
-            <span style={{ color: '#fff', fontSize: 22, fontWeight: 700, letterSpacing: 3, textShadow: '0 0 20px rgba(255,255,255,0.3)' }}>DARJ</span>
-          </div>
+        <div style={{ padding: '20px 16px', textAlign: 'center' }}>
+          <AppLogo size={48} radius={14} centered={true} light={true} />
         </div>
         <Menu
           mode="inline"

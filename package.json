@@ -47,28 +47,60 @@
   "build": {
     "appId": "com.darj.app",
     "productName": "Darj",
+    "icon": "assets/logo.ico",
     "directories": {
-      "output": "releases"
+      "output": "releases",
+      "buildResources": "assets"
     },
     "win": {
       "target": "nsis",
-      "icon": "assets/logo.png",
+      "icon": "logo.ico",
       "signAndEditExecutable": false
+    },
+    "linux": {
+      "icon": "logo.png"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Darj"
+      "shortcutName": "Darj",
+      "installerIcon": "assets/logo.ico",
+      "uninstallerIcon": "assets/logo.ico",
+      "installerHeaderIcon": "assets/logo.ico"
     },
     "files": [
       "dist/**/*",
+      "assets/**/*",
       "node_modules/**/*",
       "package.json"
     ]
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

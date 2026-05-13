@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS students (
   school_id INTEGER NOT NULL,
   section_id INTEGER NOT NULL,
   student_uid TEXT NOT NULL UNIQUE,
-  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'withdrawn', 'promoted', 'failed')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'withdrawn', 'promoted', 'failed', 'on_leave', 'transferred', 'passed_out')),
   enrollment_date DATE,
   photo TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

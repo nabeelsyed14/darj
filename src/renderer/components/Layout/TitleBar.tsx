@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Space } from 'antd'
 import { MinusOutlined, BorderOutlined, CloseOutlined, BlockOutlined } from '@ant-design/icons'
+import AppLogo from '../AppLogo'
 
 const css = (s: Record<string, any>): React.CSSProperties => s as React.CSSProperties
 
@@ -24,7 +25,10 @@ export default function TitleBar() {
       userSelect: 'none',
       borderBottom: '1px solid rgba(255,255,255,0.08)'
     })}>
-      <span style={{ color: 'rgba(255,255,255,0.95)', fontSize: 13, fontWeight: 600, letterSpacing: 1 }}>Darj</span>
+      <div style={css({ display: 'flex', alignItems: 'center', gap: 10 })}>
+        <AppLogo size={22} radius={8} centered={false} light={true} />
+        <span style={{ color: 'rgba(255,255,255,0.95)', fontSize: 13, fontWeight: 600, letterSpacing: 1 }}>Darj</span>
+      </div>
       <Space style={css({ WebkitAppRegion: 'no-drag' })}>
         {[
           { icon: <MinusOutlined style={{ fontSize: 10 }} />, action: () => window.api?.app?.minimize() },
