@@ -148,8 +148,9 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             <Form.Item name="academicYear" label={t('wizard.step1.academicYear')} rules={[{ required: true }]}>
               <Select showSearch size="large" placeholder="2025-26"
                 options={(() => {
-                  const startYear = 2020
-                  return Array.from({ length: 2100 - startYear + 1 }, (_, i) => {
+                  const currentYear = new Date().getFullYear()
+                  const startYear = currentYear - 5
+                  return Array.from({ length: 11 }, (_, i) => {
                     const y = startYear + i
                     return { label: `${y}-${String(y+1).slice(2)}`, value: `${y}-${String(y+1).slice(2)}` }
                   })

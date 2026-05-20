@@ -4,8 +4,9 @@ export function generateStudentUid(schoolId: number): string {
   const school = queryOne('SELECT uid_prefix FROM schools WHERE id = ?', [schoolId]) as { uid_prefix: string }
   const prefix = school?.uid_prefix || 'SCH'
   const year = new Date().getFullYear()
-  const count = queryOne('SELECT COUNT(*) as count FROM students WHERE school_id = ?', [schoolId]) as { count: number }
-  const seq = String(count.count + 1).padStart(4, '0')
+  // Use MAX(id) instead of COUNT(*) to avoid collisions when students are deleted
+  const maxRow = queryOne('SELECT MAX(id) as max_id FROM students WHERE school_id = ?', [schoolId]) as { max_id: number | null }
+  const seq = String((maxRow?.max_id ?? 0) + 1).padStart(4, '0')
   return `${prefix}-${year}-${seq}`
 }
 
@@ -148,30 +149,100 @@ export function moveStudent(id: number, newSectionId: number): void {
   queryRun('UPDATE students SET section_id = ? WHERE id = ?', [newSectionId, id])
 }
 
+export function deleteStudent(id: number): void {
+  // Remove dependent records first for databases without ON DELETE CASCADE on these tables.
+  queryRun('DELETE FROM attendance WHERE student_id = ?', [id])
+  queryRun('DELETE FROM marks WHERE student_id = ?', [id])
+  queryRun('DELETE FROM promotions WHERE student_id = ?', [id])
+  queryRun('DELETE FROM status_history WHERE student_id = ?', [id])
+  queryRun('DELETE FROM student_field_values WHERE student_id = ?', [id])
+  queryRun('DELETE FROM students WHERE id = ?', [id])
+}
+
 export function searchStudents(query: string, schoolId: number) {
-  const students = queryAll(
-    "SELECT * FROM students WHERE school_id = ? AND status = 'active' ORDER BY id",
+  // Single JOIN: fetch all active students with their searchable field values at once
+  const rows = queryAll(
+    `SELECT st.id, st.student_uid, st.section_id, st.status, st.enrollment_date, st.photo,
+            sf.field_key, sfv.value_text, sfv.value_date, sfv.value_number
+     FROM students st
+     LEFT JOIN student_field_values sfv ON sfv.student_id = st.id
+     LEFT JOIN student_fields sf ON sfv.field_id = sf.id AND sf.is_searchable = 1
+     WHERE st.school_id = ? AND st.status = 'active'
+     ORDER BY st.id`,
     [schoolId]
   )
 
-  const lowerQuery = query.toLowerCase()
-  return students.filter((student: any) => {
-    if (student.student_uid.toLowerCase().includes(lowerQuery)) return true
-    const fields = queryAll(
-      `SELECT sf.field_key, sfv.value_text, sfv.value_date, sfv.value_number
-       FROM student_field_values sfv
-       JOIN student_fields sf ON sfv.field_id = sf.id
-       WHERE sfv.student_id = ? AND sf.is_searchable = 1`,
-      [student.id]
-    )
+  // Group rows by student id in memory
+  const studentMap = new Map<number, any>()
+  for (const row of rows) {
+    if (!studentMap.has(row.id)) {
+      studentMap.set(row.id, {
+        id: row.id,
+        student_uid: row.student_uid,
+        section_id: row.section_id,
+        status: row.status,
+        enrollment_date: row.enrollment_date,
+        photo: row.photo,
+        searchableValues: [] as string[]
+      })
+    }
+    const val = row.value_date ?? row.value_number ?? row.value_text ?? ''
+    if (val !== '') studentMap.get(row.id)!.searchableValues.push(String(val).toLowerCase())
+  }
 
-    return fields.some((f: any) => {
-      const val = f.value_date ?? f.value_number ?? f.value_text ?? ''
-      return String(val).toLowerCase().includes(lowerQuery)
-    })
+  const lowerQuery = query.toLowerCase()
+  return [...studentMap.values()].filter((student) => {
+    if (student.student_uid.toLowerCase().includes(lowerQuery)) return true
+    return student.searchableValues.some((v: string) => v.includes(lowerQuery))
   })
 }
 
 export function updateStudentPhoto(id: number, photoDataUrl: string): void {
   queryRun('UPDATE students SET photo = ? WHERE id = ?', [photoDataUrl, id])
 }
+
+// Fetches all students for a school with basic class/section info attached
+export function getAllBySchool(schoolId: number) {
+  const students = queryAll(
+    `SELECT st.*, sec.name as section_name, c.name as class_name, c.id as class_id,
+            fn.value_text as full_name
+     FROM students st
+     JOIN sections sec ON st.section_id = sec.id
+     JOIN classes c ON sec.class_id = c.id
+     LEFT JOIN student_field_values fn ON fn.student_id = st.id
+       AND fn.field_id = (
+         SELECT sf.id
+         FROM student_fields sf
+         WHERE sf.school_id = st.school_id AND sf.field_key = 'full_name'
+         LIMIT 1
+       )
+     WHERE st.school_id = ? AND st.status = 'active'
+     ORDER BY st.id`,
+    [schoolId]
+  )
+
+  if (students.length === 0) return students
+
+  const fieldRows = queryAll(
+    `SELECT sfv.student_id, sf.field_key, sfv.value_text, sfv.value_date, sfv.value_number
+     FROM student_field_values sfv
+     JOIN student_fields sf ON sfv.field_id = sf.id
+     JOIN students st ON st.id = sfv.student_id
+     WHERE st.school_id = ? AND st.status = 'active' AND sf.is_active = 1`,
+    [schoolId]
+  )
+
+  const fieldMap = new Map<number, Record<string, any>>()
+  for (const row of fieldRows) {
+    if (!fieldMap.has(row.student_id)) fieldMap.set(row.student_id, {})
+    fieldMap.get(row.student_id)![row.field_key] = row.value_date ?? row.value_number ?? row.value_text ?? ''
+  }
+
+  for (const st of students as any[]) {
+    st.field_values = fieldMap.get(st.id) || {}
+    if (!st.full_name && st.field_values?.full_name) st.full_name = st.field_values.full_name
+  }
+
+  return students
+}
+

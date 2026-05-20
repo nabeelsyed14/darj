@@ -46,7 +46,7 @@ export default function StudentList() {
 
   useEffect(() => {
     loadSections()
-  }, [])
+  }, [school])
 
   useEffect(() => {
     loadStudents()
@@ -77,13 +77,11 @@ export default function StudentList() {
       } else if (filterSection) {
         result = await window.api.students.getBySection(filterSection)
       } else {
-        const allSections = await window.api.sections.getAll(school.id)
-        for (const sec of allSections) {
-          const secStudents = await window.api.students.getBySection(sec.id)
-          result = [...result, ...secStudents]
-        }
+        // M3 Fix: Replaced N+1 loop with a single query
+        result = await window.api.students.getAllBySchool(school.id)
       }
       setStudents(result)
+      loadSummaryCounts(result)
     } catch (e: any) {
       console.error('loadStudents error:', e)
       if (window.api?.app?.logError) window.api.app.logError('loadStudents: ' + e?.message)
@@ -93,14 +91,13 @@ export default function StudentList() {
     }
   }
 
-  const loadSummaryCounts = async () => {
+  // M4 Fix: Take pre-loaded students to avoid another N+1
+  const loadSummaryCounts = async (preloaded?: Student[]) => {
     if (!school) return
     try {
-      const allSections = await window.api.sections.getAll(school.id)
-      let all: Student[] = []
-      for (const sec of allSections) {
-        const secStudents = await window.api.students.getAllBySection(sec.id)
-        all = [...all, ...secStudents]
+      let all: Student[] = preloaded || []
+      if (!preloaded) {
+        all = await window.api.students.getAllBySchool(school.id)
       }
       setTotalStudentsCount(all.length)
       setActiveStudentsCount(all.filter((s: Student) => s.status === 'active').length)
@@ -109,8 +106,8 @@ export default function StudentList() {
     }
   }
 
-  const handleWithdraw = async (student: Student) => {
-    await window.api.students.withdraw(student.id)
+  const handleDelete = async (student: Student) => {
+    await window.api.students.delete(student.id)
     message.success(t('common.success'))
     loadStudents()
     loadSummaryCounts()
@@ -138,19 +135,19 @@ export default function StudentList() {
     {
       title: t('fields.full_name'),
       key: 'full_name',
-      render: (_: any, record: Student) => record.field_values?.full_name || '-'
+      render: (_: any, record: any) => record.field_values?.full_name || record.full_name || '-'
     },
     {
       title: t('fields.gender'),
       key: 'gender',
       width: 80,
-      render: (_: any, record: Student) => record.field_values?.gender || '-'
+      render: (_: any, record: any) => record.field_values?.gender || record.gender || '-'
     },
     {
       title: t('fields.pen_number'),
       key: 'pen_number',
       width: 120,
-      render: (_: any, record: Student) => record.field_values?.pen_number || '-'
+      render: (_: any, record: any) => record.field_values?.pen_number || record.pen_number || '-'
     },
     {
       title: t('students.status'),
@@ -171,7 +168,7 @@ export default function StudentList() {
           <Button size="small" icon={<EyeOutlined />} onClick={() => setViewingStudent(record)} />
           <Button size="small" icon={<EditOutlined />} onClick={() => { setEditingStudent(record); setShowForm(true) }} />
           <Button size="small" icon={<SwapOutlined />} onClick={() => setMovingStudent(record)} />
-          <Popconfirm title={t('students.withdrawConfirm')} onConfirm={() => handleWithdraw(record)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+          <Popconfirm title="Delete this student permanently?" onConfirm={() => handleDelete(record)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
             <Button size="small" danger icon={<UserDeleteOutlined />} />
           </Popconfirm>
         </Space>

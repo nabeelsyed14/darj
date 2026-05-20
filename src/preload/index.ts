@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('api', {
     maximize: () => ipcRenderer.invoke('app:maximize'),
     close: () => ipcRenderer.invoke('app:close'),
     onMaximizeChange: (cb: (maximized: boolean) => void) => {
+      ipcRenderer.removeAllListeners('maximize-changed')
       ipcRenderer.on('maximize-changed', (_e: any, val: boolean) => cb(val))
     }
   },
@@ -33,11 +34,13 @@ contextBridge.exposeInMainWorld('api', {
     getAllBySection: (sectionId: number) => ipcRenderer.invoke('students:getAllBySection', sectionId),
     update: (id: number, data: any) => ipcRenderer.invoke('students:update', id, data),
     withdraw: (id: number) => ipcRenderer.invoke('students:withdraw', id),
+    delete: (id: number) => ipcRenderer.invoke('students:delete', id),
     move: (id: number, sectionId: number) => ipcRenderer.invoke('students:move', id, sectionId),
     updatePhoto: (id: number, photo: string) => ipcRenderer.invoke('students:updatePhoto', id, photo),
     changeStatus: (id: number, oldStatus: string, newStatus: string, reason: string, effectiveDate: string) => ipcRenderer.invoke('students:changeStatus', id, oldStatus, newStatus, reason, effectiveDate),
     getStatusHistory: (id: number) => ipcRenderer.invoke('students:getStatusHistory', id),
-    search: (query: string, schoolId: number) => ipcRenderer.invoke('students:search', query, schoolId)
+    search: (query: string, schoolId: number) => ipcRenderer.invoke('students:search', query, schoolId),
+    getAllBySchool: (schoolId: number) => ipcRenderer.invoke('students:getAllBySchool', schoolId)
   },
   fields: {
     defaults: () => ipcRenderer.invoke('fields:defaults'),
@@ -82,7 +85,7 @@ contextBridge.exposeInMainWorld('api', {
     createSubject: (schoolId: number, classId: number, name: string, passingMarks: number | null) => ipcRenderer.invoke('marks:createSubject', schoolId, classId, name, passingMarks),
     getSubjects: (classId: number) => ipcRenderer.invoke('marks:getSubjects', classId),
     deleteSubject: (id: number) => ipcRenderer.invoke('marks:deleteSubject', id),
-    createExam: (schoolId: number, year: string, name: string, date: string | null, examType: string, weight: number, classId?: number) => ipcRenderer.invoke('marks:createExam', schoolId, year, name, date, examType, weight, classId),
+    createExam: (schoolId: number, year: string, name: string, date: string | null, examType: string, weight: number, classId?: number, maxMarks?: number) => ipcRenderer.invoke('marks:createExam', schoolId, year, name, date, examType, weight, classId, maxMarks),
     getExams: (schoolId: number, year: string) => ipcRenderer.invoke('marks:getExams', schoolId, year),
     getExamsByClass: (classId: number, year: string) => ipcRenderer.invoke('marks:getExamsByClass', classId, year),
     markExamCompleted: (examId: number, date: string) => ipcRenderer.invoke('marks:markExamCompleted', examId, date),
@@ -90,12 +93,15 @@ contextBridge.exposeInMainWorld('api', {
     upsert: (data: any) => ipcRenderer.invoke('marks:upsert', data),
     getByExam: (examId: number) => ipcRenderer.invoke('marks:getByExam', examId),
     getByStudent: (studentId: number) => ipcRenderer.invoke('marks:getByStudent', studentId),
-    getClassMarks: (classId: number, examId: number) => ipcRenderer.invoke('marks:getClassMarks', classId, examId)
+    getClassMarks: (classId: number, examId: number) => ipcRenderer.invoke('marks:getClassMarks', classId, examId),
+    getBySchool: (schoolId: number, year: string) => ipcRenderer.invoke('marks:getBySchool', schoolId, year),
+    getByClass: (classId: number, year: string) => ipcRenderer.invoke('marks:getByClass', classId, year)
   },
   promotions: {
     promote: (data: any) => ipcRenderer.invoke('promotions:promote', data),
     getByYear: (year: string) => ipcRenderer.invoke('promotions:getByYear', year),
-    getByStudent: (studentId: number) => ipcRenderer.invoke('promotions:getByStudent', studentId)
+    getByStudent: (studentId: number) => ipcRenderer.invoke('promotions:getByStudent', studentId),
+    finalizeRollover: (schoolId: number, year: string, finalClassName: string | null) => ipcRenderer.invoke('promotions:finalizeRollover', schoolId, year, finalClassName)
   },
   archives: {
     archive: (schoolId: number, year: string) => ipcRenderer.invoke('archives:archive', schoolId, year),

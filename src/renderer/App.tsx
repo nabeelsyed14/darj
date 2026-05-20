@@ -15,10 +15,11 @@ import MarksEntry from './components/Marks/MarksEntry'
 import PromotionReview from './components/Promotions/PromotionReview'
 import YearEndRollover from './components/YearEnd/YearEndRollover'
 import StudentAnalytics from './components/Analytics/StudentAnalytics'
+import type { Api } from './utils/api'
 
 declare global {
   interface Window {
-    api: any
+    api: Api
   }
 }
 

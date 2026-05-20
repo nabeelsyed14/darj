@@ -58,16 +58,21 @@ export default function YearEndRollover() {
         return { ...cls, sections }
       }))
 
+      const promotionsForYear = await window.api.promotions.getByYear(school.academic_year)
+      const promotionByStudentId = new Map<number, any>()
+      for (const p of promotionsForYear) {
+        if (!promotionByStudentId.has(p.student_id)) {
+          promotionByStudentId.set(p.student_id, p)
+        }
+      }
+
       const summary = await Promise.all(withSections.map(async (cls: any) => {
         let total = 0, pending = 0, promoted = 0, failed = 0
         for (const sec of cls.sections) {
-          const students = await window.api.students.getAllBySection(sec.id)
+          // Use active rolls for rollover readiness, consistent with Classes & Sections counts.
+          const students = await window.api.students.getBySection(sec.id)
           total += students.length
-          const promos = await Promise.all(students.map((s: any) => window.api.promotions.getByStudent(s.id)))
-          const studentResults = students.map((s: any) => {
-            const p = promos[students.indexOf(s)] || []
-            return p.find((r: any) => r.academic_year === school.academic_year)
-          })
+          const studentResults = students.map((s: any) => promotionByStudentId.get(s.id))
           pending += studentResults.filter((r: any) => !r).length
           promoted += studentResults.filter((r: any) => r?.status === 'promoted').length
           failed += studentResults.filter((r: any) => r?.status === 'failed').length
@@ -124,7 +129,19 @@ export default function YearEndRollover() {
 
     setArchiving(true)
     try {
+      // Ensure all saved promotions are materialized into student status/section
+      // before archiving and year switch.
+      await window.api.promotions.finalizeRollover(school.id, currentYear, finalClass)
+
       await window.api.archives.archive(school.id, currentYear)
+
+      const promotionsForYear = await window.api.promotions.getByYear(currentYear)
+      const promotionByStudentId = new Map<number, any>()
+      for (const p of promotionsForYear) {
+        if (!promotionByStudentId.has(p.student_id)) {
+          promotionByStudentId.set(p.student_id, p)
+        }
+      }
 
       const ExcelJS = await import('exceljs')
       const wb = new ExcelJS.Workbook()
@@ -143,35 +160,54 @@ export default function YearEndRollover() {
         ws.getRow(row).height = 22
       }
 
-      for (const cls of allClasses) {
-        const secs = await window.api.sections.getByClass(cls.id)
+      const classSections = await Promise.all(allClasses.map(async (cls: any) => ({
+        cls,
+        secs: await window.api.sections.getByClass(cls.id)
+      })))
+
+      for (const { cls, secs } of classSections) {
+        const classMarks = await window.api.marks.getByClass(cls.id, currentYear)
+        const marksByStudentId = new Map<number, any[]>()
+        for (const m of classMarks) {
+          if (!marksByStudentId.has(m.student_id)) marksByStudentId.set(m.student_id, [])
+          marksByStudentId.get(m.student_id)!.push(m)
+        }
+
         for (const sec of secs) {
           const students = await window.api.students.getAllBySection(sec.id)
           if (students.length === 0) continue
 
-          const studentData = await Promise.all(students.map(async (s: any) => {
-            const marks = await window.api.marks.getByStudent(s.id)
-            const examMap = new Map<string, { weight: number; marks: number[] }>()
+          const studentData: any[] = students.map((s: any) => {
+            const marks = marksByStudentId.get(s.id) || []
+            const examMap = new Map<string, { weight: number; percentages: number[] }>()
             for (const m of marks) {
-              if (!examMap.has(m.exam_name)) examMap.set(m.exam_name, { weight: m.weight_percentage || 100, marks: [] })
-              examMap.get(m.exam_name)!.marks.push(m.marks_obtained || 0)
+              if (!examMap.has(m.exam_name)) examMap.set(m.exam_name, { weight: m.weight_percentage || 100, percentages: [] })
+              const max = Number(m.max_marks || 0)
+              const obtained = Number(m.marks_obtained || 0)
+              const pct = max > 0 ? (obtained / max) * 100 : 0
+              examMap.get(m.exam_name)!.percentages.push(pct)
             }
             let wT = 0, tW = 0
             for (const [, d] of examMap) {
-              const avg = d.marks.length > 0 ? Math.round(d.marks.reduce((a: number, b: number) => a + b, 0) / d.marks.length) : 0
-              wT += avg * d.weight
+              const examPct = d.percentages.length > 0 ? (d.percentages.reduce((a: number, b: number) => a + b, 0) / d.percentages.length) : 0
+              wT += examPct * d.weight
               tW += d.weight
             }
             const pct = tW > 0 ? Math.round(wT / tW) : 0
-            const promos = await window.api.promotions.getByStudent(s.id)
-            const promo = promos.find((p: any) => p.academic_year === currentYear)
+            const promo = promotionByStudentId.get(s.id)
             let result = 'Pending'
             if (promo?.status === 'promoted' && promo?.reason) result = 'Exceptional'
             else if (promo?.status === 'promoted') result = 'Promoted'
             else if (promo?.status === 'failed') result = 'Failed'
-            const statusLabel = s.status === 'active' ? 'Active' : s.status === 'withdrawn' ? 'Withdrawn' : s.status === 'on_leave' ? 'On Leave' : s.status === 'transferred' ? 'Transferred' : s.status
+            const statusLabel =
+              s.status === 'active' ? 'Active'
+              : s.status === 'withdrawn' ? 'Withdrawn'
+              : s.status === 'on_leave' ? 'On Leave'
+              : s.status === 'transferred' ? 'Transferred'
+              : s.status === 'passed_out' ? 'Passed Out'
+              : s.status
             return { student: s, pct, result, rawResult: result, status: statusLabel }
-          }))
+          })
 
           studentData.sort((a: any, b: any) => b.pct - a.pct)
           for (let i = 0; i < studentData.length; i++) studentData[i].rank = i + 1
@@ -282,31 +318,45 @@ export default function YearEndRollover() {
         ]
       }
 
-      const dateStr = new Date().toISOString().split('T')[0]
-      const filename = `Darj_YearEnd_${currentYear}_${dateStr}.xlsx`
-      const buffer = await wb.xlsx.writeBuffer()
-      const bytes = Array.from(new Uint8Array(buffer as ArrayBuffer))
-      const saveResult = await window.api.app.saveToDesktop(filename, bytes)
-      if (!saveResult.success) throw new Error(saveResult.error || 'Failed to save Excel to Desktop')
-
+      // Update school year FIRST (before Excel, so rollover is saved even if Excel fails)
       await window.api.schools.update({
-        id: school.id,
-        name: school.name,
-        address: school.address || '',
-        principal_name: school.principal_name || '',
-        academic_year: nextYear,
+        id: school.id, name: school.name, address: school.address || '',
+        principal_name: school.principal_name || '', academic_year: nextYear,
         uid_prefix: school.uid_prefix || 'SCH'
       })
-
       const updatedSchool = await window.api.app.getSchool()
       if (updatedSchool) useSchoolStore.getState().setSchool(updatedSchool)
+      message.success(`Rollover complete. ${currentYear} has been archived.`)
 
-      message.success(`Rollover complete. ${currentYear} has been archived. Year end report saved to Desktop.`)
+      // Generate Excel as separate step — errors here don't block the rollover
+      try {
+        const dateStr = new Date().toISOString().split('T')[0]
+        const filename = `Darj_YearEnd_${currentYear}_${dateStr}.xlsx`
+        const buffer = await wb.xlsx.writeBuffer()
+        const bytes = Array.from(new Uint8Array(buffer as ArrayBuffer))
+        const saveResult = await window.api.app.saveToDesktop(filename, bytes)
+        if (saveResult.success) {
+          Modal.success({
+            title: 'Academic Year Successfully Closed',
+            content: `Year ${currentYear} has been archived and rollover to ${nextYear} is complete.\n\nReport saved to:\n${saveResult.path || filename}`
+          })
+        } else {
+          Modal.warning({
+            title: 'Rollover Completed, Report Not Saved',
+            content: `Year rollover was successful, but report save was skipped or failed: ${saveResult.error || 'unknown error'}`
+          })
+        }
+      } catch (excelErr: any) {
+        Modal.warning({
+          title: 'Rollover Completed, Report Generation Failed',
+          content: `Year rollover was successful, but Excel report could not be generated: ${excelErr.message}`
+        })
+      }
+
       setShowRollover(false)
       setShowFieldPicker(false)
       setSelectedExtraFields([])
       loadAll()
-      window.location.reload()
     } catch (e: any) {
       message.error(`Rollover failed: ${e?.message || t('errors.generic')}`)
     } finally {

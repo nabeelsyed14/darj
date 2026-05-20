@@ -8,7 +8,14 @@ export function archiveYear(schoolId: number, academicYear: string): void {
   const attendance = queryAll('SELECT * FROM attendance WHERE school_id = ?', [schoolId])
   const subjects = queryAll('SELECT sub.* FROM subjects sub JOIN classes c ON sub.class_id = c.id WHERE c.school_id = ?', [schoolId])
   const exams = queryAll('SELECT * FROM exams WHERE school_id = ? AND academic_year = ?', [schoolId, academicYear])
-  const marks = queryAll('SELECT m.* FROM marks m JOIN exams e ON m.exam_id = e.id WHERE e.school_id = ? AND e.academic_year = ?', [schoolId, academicYear])
+  const marks = queryAll(
+    `SELECT m.*, sub.name as subject_name, sub.passing_marks
+     FROM marks m
+     JOIN exams e ON m.exam_id = e.id
+     JOIN subjects sub ON m.subject_id = sub.id
+     WHERE e.school_id = ? AND e.academic_year = ?`,
+    [schoolId, academicYear]
+  )
 
   // Build resolved student list with names, class, section, result
   const students = queryAll(
@@ -33,24 +40,27 @@ export function archiveYear(schoolId: number, academicYear: string): void {
   const sectionMap: Record<number, any> = {}
   for (const s of sections) { sectionMap[s.id] = s }
 
-  // Build resolved students array with all readable fields
+  // Pre-fetch ALL field values for ALL students in a single query
+  const allFieldValues = queryAll(
+    `SELECT sfv.student_id, sf.field_key, sfv.value_text, sfv.value_date, sfv.value_number
+     FROM student_field_values sfv
+     JOIN student_fields sf ON sfv.field_id = sf.id
+     JOIN students st ON sfv.student_id = st.id
+     WHERE st.school_id = ?`,
+    [schoolId]
+  )
+  // Group by student_id in memory — O(n) instead of O(n) queries
+  const fieldValuesByStudent: Record<number, Record<string, any>> = {}
+  for (const fv of allFieldValues) {
+    if (!fieldValuesByStudent[fv.student_id]) fieldValuesByStudent[fv.student_id] = {}
+    fieldValuesByStudent[fv.student_id][fv.field_key] = fv.value_date ?? fv.value_number ?? fv.value_text ?? ''
+  }
+
+  // Build resolved students array using pre-fetched data — no extra queries
   const resolvedStudents = students.map((st: any) => {
     const sec = sectionMap[st.section_id]
     const promo = promoMap[st.id]
-
-    // Get all field values for this student
-    const fvs = queryAll(
-      `SELECT sf.field_key, sf.display_name, sfv.value_text, sfv.value_date, sfv.value_number
-       FROM student_field_values sfv
-       JOIN student_fields sf ON sfv.field_id = sf.id
-       WHERE sfv.student_id = ?`,
-      [st.id]
-    )
-
-    const fieldValues: Record<string, any> = {}
-    for (const fv of fvs) {
-      fieldValues[fv.field_key] = fv.value_date ?? fv.value_number ?? fv.value_text ?? ''
-    }
+    const fieldValues = fieldValuesByStudent[st.id] || {}
 
     let result = st.status
     let promoStatus = promo?.status || null

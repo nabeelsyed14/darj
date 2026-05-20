@@ -123,17 +123,13 @@ CREATE TABLE IF NOT EXISTS exams (
   exam_date DATE,
   exam_type TEXT DEFAULT 'minor' CHECK(exam_type IN ('major', 'minor')),
   weight_percentage REAL DEFAULT 100,
+  class_id INTEGER,
+  max_marks REAL DEFAULT 100,
+  is_completed INTEGER DEFAULT 0,
+  FOREIGN KEY (class_id) REFERENCES classes(id),
   FOREIGN KEY (school_id) REFERENCES schools(id)
 );
 
--- Migrations: add exam_type and weight_percentage if missing
-ALTER TABLE exams ADD COLUMN exam_type TEXT DEFAULT 'minor';
-ALTER TABLE exams ADD COLUMN weight_percentage REAL DEFAULT 100;
-ALTER TABLE exams ADD COLUMN class_id INTEGER REFERENCES classes(id);
-ALTER TABLE exams ADD COLUMN is_completed INTEGER DEFAULT 0;
-
--- Migrations: add photo column to students
-ALTER TABLE students ADD COLUMN photo TEXT;
 
 -- Status change history
 CREATE TABLE IF NOT EXISTS status_history (
@@ -177,8 +173,6 @@ CREATE TABLE IF NOT EXISTS promotions (
   FOREIGN KEY (to_section_id) REFERENCES sections(id)
 );
 
--- Migrations: add reason column to promotions
-ALTER TABLE promotions ADD COLUMN reason TEXT;
 
 -- Archives (year-end snapshots)
 CREATE TABLE IF NOT EXISTS archives (

@@ -138,7 +138,7 @@ export default function ExportPanel() {
         ws.getCell(6 + ri, 1).value = s.field_values?.full_name || ''
         let p = 0
         dates.forEach((d, di) => {
-          const val = (am[d] || '')[0].toUpperCase() || ''
+          const val = am[d] ? am[d][0].toUpperCase() : ''
           ws.getCell(6 + ri, 2 + di).value = val; if (val === 'P') p++
           ws.getCell(6 + ri, 2 + di).alignment = { horizontal: 'center', vertical: 'middle' }
         })

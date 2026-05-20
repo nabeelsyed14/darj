@@ -73,7 +73,7 @@ export default function MarksEntry() {
     await window.api.marks.createExam(
       school.id, school.academic_year, v.name,
       v.date?.format('YYYY-MM-DD') || null,
-      'major', newWeight
+      'major', newWeight, undefined, Number(v.maxMarks) || 100
     )
     message.success('Exam created')
     setShowCreateExam(false); createExamForm.resetFields(); loadExams()
@@ -87,6 +87,7 @@ export default function MarksEntry() {
 
   const handleSaveMarks = async () => {
     if (!activeExam) return
+    const activeExamData = exams.find((e: any) => e.id === activeExam)
     setSaving(true)
     try {
       for (const st of students) {
@@ -96,7 +97,7 @@ export default function MarksEntry() {
           if (obtained === undefined) continue
           await window.api.marks.upsert({
             student_id: st.id, subject_id: sub.id, exam_id: activeExam,
-            marks_obtained: obtained, max_marks: 100, passing_marks: sub.passing_marks
+            marks_obtained: obtained, max_marks: activeExamData?.max_marks || 100, passing_marks: sub.passing_marks
           })
         }
       }
@@ -114,12 +115,15 @@ export default function MarksEntry() {
   }
 
   const handleAddSubject = async () => {
-    if (!selectedClass || !school) return
+    if (!school) return
     const v = await subjectForm.validateFields()
-    await window.api.marks.createSubject(school.id, selectedClass, v.name, v.passing_marks || null)
+    const classIds: number[] = v.classes || (selectedClass ? [selectedClass] : [])
+    for (const classId of classIds) {
+      await window.api.marks.createSubject(school.id, classId, v.name, v.passing_marks || null)
+    }
     subjectForm.resetFields()
-    window.api.marks.getSubjects(selectedClass).then(setSubjects)
-    message.success(t('common.success'))
+    if (selectedClass) window.api.marks.getSubjects(selectedClass).then(setSubjects)
+    message.success(`Subject added to ${classIds.length} class${classIds.length > 1 ? 'es' : ''}`)
   }
 
   const handleDeleteSubject = async (id: number) => {
@@ -234,9 +238,10 @@ export default function MarksEntry() {
 
       {/* Create Exam Modal */}
       <Modal title="Create New Exam" open={showCreateExam} onCancel={() => setShowCreateExam(false)} footer={null}>
-        <Form form={createExamForm} layout="vertical" onFinish={handleCreateExam} initialValues={{ weight: 100 }}>
+        <Form form={createExamForm} layout="vertical" onFinish={handleCreateExam} initialValues={{ weight: 100, maxMarks: 100 }}>
           <Form.Item name="name" label="Exam Name" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="weight" label="Weightage %"><Input type="number" /></Form.Item>
+          <Form.Item name="maxMarks" label="Maximum Marks"><Input type="number" /></Form.Item>
           <Form.Item name="date" label="Exam Date"><DatePicker style={{ width: '100%' }} /></Form.Item>
           <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Total current weightage: {exams.reduce((s: number, e: any) => s + (e.weight_percentage || 0), 0)}%</Text>
           <Button type="primary" htmlType="submit">Create Exam</Button>
@@ -247,13 +252,15 @@ export default function MarksEntry() {
       <Modal title={`Manage Subjects`} open={showSubjectModal} onCancel={() => setShowSubjectModal(false)} footer={null}>
         <Table dataSource={subjects} rowKey="id" size="small" pagination={false} columns={[
           { title: 'Subject', dataIndex: 'name' },
+          { title: 'Class', dataIndex: 'class_id', render: (v: number) => classes.find((c: any) => c.id === v)?.name || `Class ${v}` },
           { title: 'Passing Marks', dataIndex: 'passing_marks', render: (v: any) => v ?? '—' },
           { title: '', render: (_: any, r: any) => <Button danger size="small" onClick={() => handleDeleteSubject(r.id)}>Delete</Button> }
         ]} />
-        <Form form={subjectForm} layout="inline" onFinish={handleAddSubject} style={{ marginTop: 12 }}>
+        <Form form={subjectForm} layout="vertical" onFinish={handleAddSubject} style={{ marginTop: 12 }}>
           <Form.Item name="name" label="Subject" rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item name="passing_marks" label="Passing"><Input type="number" style={{ width: 80 }} /></Form.Item>
-          <Form.Item><Button type="primary" htmlType="submit">Add</Button></Form.Item>
+          <Form.Item name="passing_marks" label="Passing Marks"><Input type="number" style={{ width: 100 }} /></Form.Item>
+          <Form.Item name="classes" label="Assign to Classes"><Select mode="multiple" placeholder="Select classes" options={classes.map((c: any) => ({ label: c.name, value: c.id }))} /></Form.Item>
+          <Form.Item><Button type="primary" htmlType="submit">Add Subject</Button></Form.Item>
         </Form>
       </Modal>
     </div>

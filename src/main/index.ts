@@ -132,9 +132,11 @@ ipcMain.handle('students:getBySection', (_e, sectionId: number) => students.getS
 ipcMain.handle('students:getAllBySection', (_e, sectionId: number) => students.getAllStudentsBySection(sectionId))
 ipcMain.handle('students:update', (_e, id: number, data) => { students.updateStudent(id, data); saveDb() })
 ipcMain.handle('students:withdraw', (_e, id: number) => { students.withdrawStudent(id); saveDb() })
+ipcMain.handle('students:delete', (_e, id: number) => { students.deleteStudent(id); saveDb() })
 ipcMain.handle('students:move', (_e, id: number, sectionId: number) => { students.moveStudent(id, sectionId); saveDb() })
 ipcMain.handle('students:updatePhoto', (_e, id: number, photo: string) => { students.updateStudentPhoto(id, photo); saveDb() })
 ipcMain.handle('students:search', (_e, query: string, schoolId: number) => students.searchStudents(query, schoolId))
+ipcMain.handle('students:getAllBySchool', (_e, schoolId: number) => students.getAllBySchool(schoolId))
 
 ipcMain.handle('fields:defaults', () => fields.getDefaultFields())
 ipcMain.handle('fields:create', async (_e, schoolId: number, f: any[]) => {
@@ -180,7 +182,7 @@ ipcMain.handle('attendance:getSummary', (_e, sectionId: number, start: string, e
 ipcMain.handle('marks:createSubject', (_e, schoolId: number, classId: number, name: string, passingMarks: number | null) => { const r = marks.createSubject(schoolId, classId, name, passingMarks); saveDb(); return r })
 ipcMain.handle('marks:getSubjects', (_e, classId: number) => marks.getSubjectsByClass(classId))
 ipcMain.handle('marks:deleteSubject', (_e, id: number) => { marks.deleteSubject(id); saveDb() })
-ipcMain.handle('marks:createExam', (_e, schoolId: number, year: string, name: string, date: string | null, examType: string, weight: number, classId?: number) => { const r = marks.createExam(schoolId, year, name, date, examType, weight, classId); saveDb(); return r })
+ipcMain.handle('marks:createExam', (_e, schoolId: number, year: string, name: string, date: string | null, examType: string, weight: number, classId?: number, maxMarks?: number) => { const r = marks.createExam(schoolId, year, name, date, examType, weight, classId, maxMarks); saveDb(); return r })
 ipcMain.handle('marks:getExams', (_e, schoolId: number, year: string) => marks.getExams(schoolId, year))
 ipcMain.handle('marks:getExamsByClass', (_e, classId: number, year: string) => marks.getExamsByClass(classId, year))
 ipcMain.handle('marks:markExamCompleted', (_e, examId: number, date: string) => { marks.markExamCompleted(examId, date); saveDb() })
@@ -189,12 +191,18 @@ ipcMain.handle('marks:upsert', (_e, data) => { marks.upsertMark(data); saveDb() 
 ipcMain.handle('marks:getByExam', (_e, examId: number) => marks.getMarksByExam(examId))
 ipcMain.handle('marks:getByStudent', (_e, studentId: number) => marks.getMarksByStudent(studentId))
 ipcMain.handle('marks:getClassMarks', (_e, classId: number, examId: number) => marks.getClassMarks(classId, examId))
+ipcMain.handle('marks:getBySchool', (_e, schoolId: number, year: string) => marks.getMarksBySchool(schoolId, year))
+ipcMain.handle('marks:getByClass', (_e, classId: number, year: string) => marks.getMarksByClass(classId, year))
 
 ipcMain.handle('promotions:promote', (_e, data) => { promotions.promoteStudent(data); saveDb() })
 ipcMain.handle('promotions:getByYear', (_e, year: string) => promotions.getPromotionsByYear(year))
 ipcMain.handle('promotions:getByStudent', (_e, studentId: number) => promotions.getStudentPromotions(studentId))
+ipcMain.handle('promotions:finalizeRollover', (_e, schoolId: number, year: string, finalClassName: string | null) => {
+  promotions.finalizeRolloverForYear(schoolId, year, finalClassName)
+  saveDb()
+})
 
-ipcMain.handle('archives:archive', (_e, schoolId: number, year: string) => { archives.archiveYear(schoolId, year) })
+ipcMain.handle('archives:archive', (_e, schoolId: number, year: string) => { archives.archiveYear(schoolId, year); saveDb() })
 ipcMain.handle('archives:get', (_e, schoolId: number) => archives.getArchives(schoolId))
 ipcMain.handle('archives:getData', (_e, schoolId: number, year: string) => archives.getArchive(schoolId, year))
 ipcMain.handle('archives:delete', (_e, id: number) => { archives.deleteArchive(id); saveDb() })
@@ -229,6 +237,8 @@ ipcMain.handle('app:restore', async () => {
     closeDb()
     const backupData = readFileSync(result.filePaths[0])
     writeFileSync(dbPath, backupData)
+    // Re-initialize so the main process is fully operational without a restart
+    try { await initDb() } catch (e: any) { log('app:restore initDb failed: ' + e.message) }
     return { success: true }
   }
   return { success: false }
@@ -238,9 +248,14 @@ ipcMain.handle('app:saveToDesktop', async (_e, filename: string, data: number[])
   try {
     const desktopPath = app.getPath('desktop')
     const safeName = String(filename || 'Darj_Export.xlsx').replace(/[\\/:*?"<>|]/g, '_')
-    const fullPath = join(desktopPath, safeName)
-    writeFileSync(fullPath, Buffer.from(data))
-    return { success: true, path: fullPath }
+    const saveResult = await dialog.showSaveDialog({
+      title: 'Save Year-End Report',
+      defaultPath: join(desktopPath, safeName),
+      filters: [{ name: 'Excel Workbook', extensions: ['xlsx'] }]
+    })
+    if (!saveResult.filePath) return { success: false, error: 'Save cancelled' }
+    writeFileSync(saveResult.filePath, Buffer.from(data))
+    return { success: true, path: saveResult.filePath }
   } catch (e: any) {
     log('app:saveToDesktop error: ' + e.message)
     return { success: false, error: e?.message || 'Failed to save file' }

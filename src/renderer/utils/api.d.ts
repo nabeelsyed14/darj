@@ -2,7 +2,15 @@ export interface Api {
   app: {
     isSetupComplete: () => Promise<boolean>
     getSchool: () => Promise<any>
+    backup: () => Promise<{ success: boolean; path?: string }>
+    restore: () => Promise<{ success: boolean }>
     saveToDesktop: (filename: string, data: number[]) => Promise<{ success: boolean; path?: string; error?: string }>
+    logError: (msg: string) => Promise<void>
+    isMaximized: () => Promise<boolean>
+    minimize: () => Promise<void>
+    maximize: () => Promise<void>
+    close: () => Promise<void>
+    onMaximizeChange: (cb: (maximized: boolean) => void) => void
   }
   schools: {
     create: (data: any) => Promise<number>
@@ -21,11 +29,13 @@ export interface Api {
     getAllBySection: (sectionId: number) => Promise<any[]>
     update: (id: number, data: any) => Promise<void>
     withdraw: (id: number) => Promise<void>
+    delete: (id: number) => Promise<void>
     move: (id: number, sectionId: number) => Promise<void>
     search: (query: string, schoolId: number) => Promise<any[]>
     changeStatus: (id: number, oldStatus: string, newStatus: string, reason: string, effectiveDate: string) => Promise<void>
     getStatusHistory: (id: number) => Promise<any[]>
     updatePhoto: (id: number, photo: string) => Promise<void>
+    getAllBySchool: (schoolId: number) => Promise<any[]>
   }
   fields: {
     defaults: () => Promise<any[]>
@@ -70,7 +80,7 @@ export interface Api {
     createSubject: (schoolId: number, classId: number, name: string, passingMarks: number | null) => Promise<number>
     getSubjects: (classId: number) => Promise<any[]>
     deleteSubject: (id: number) => Promise<void>
-    createExam: (schoolId: number, year: string, name: string, date: string | null, examType: string, weight: number, classId?: number) => Promise<number>
+    createExam: (schoolId: number, year: string, name: string, date: string | null, examType: string, weight: number, classId?: number, maxMarks?: number) => Promise<number>
     getExams: (schoolId: number, year: string) => Promise<any[]>
     getExamsByClass: (classId: number, year: string) => Promise<any[]>
     markExamCompleted: (examId: number, date: string) => Promise<void>
@@ -79,11 +89,14 @@ export interface Api {
     getByExam: (examId: number) => Promise<any[]>
     getByStudent: (studentId: number) => Promise<any[]>
     getClassMarks: (classId: number, examId: number) => Promise<any[]>
+    getBySchool: (schoolId: number, year: string) => Promise<any[]>
+    getByClass: (classId: number, year: string) => Promise<any[]>
   }
   promotions: {
     promote: (data: any) => Promise<void>
     getByYear: (year: string) => Promise<any[]>
     getByStudent: (studentId: number) => Promise<any[]>
+    finalizeRollover: (schoolId: number, year: string, finalClassName: string | null) => Promise<void>
   }
   archives: {
     archive: (schoolId: number, year: string) => Promise<void>

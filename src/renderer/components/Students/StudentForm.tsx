@@ -85,13 +85,24 @@ export default function StudentForm({ student, sections, onComplete }: StudentFo
   }
 
   const renderField = (field: any) => {
+    const parseSelectOptions = (f: any): { label: string; value: string }[] => {
+      if (Array.isArray(f?.options)) return f.options.map((o: any) => ({ label: String(o), value: String(o) }))
+      if (typeof f?.options === 'string') {
+        return f.options.split(',').map((o: string) => o.trim()).filter(Boolean).map((o: string) => ({ label: o, value: o }))
+      }
+      if (f?.field_key === 'gender') {
+        return ['Male', 'Female', 'Other'].map((o) => ({ label: o, value: o }))
+      }
+      return []
+    }
+
     switch (field.field_type) {
       case 'date':
         return <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
       case 'number':
         return <Input type="number" />
       case 'select':
-        return <Input />
+        return <Select options={parseSelectOptions(field)} showSearch allowClear />
       default:
         return <Input />
     }

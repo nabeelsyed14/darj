@@ -30,18 +30,20 @@ export function verifyLogin(password: string): boolean {
 }
 
 export function resetPassword(recoveryKey: string, newPassword: string): boolean {
-  const user = queryOne('SELECT recovery_key_hash FROM users ORDER BY id DESC LIMIT 1') as { recovery_key_hash: string } | undefined
+  const user = queryOne('SELECT id, recovery_key_hash FROM users ORDER BY id DESC LIMIT 1') as { id: number; recovery_key_hash: string } | undefined
   if (!user) return false
   if (!verifyRecoveryKey(recoveryKey, user.recovery_key_hash)) return false
 
   const newPasswordHash = hashPassword(newPassword)
-  queryRun('UPDATE users SET password_hash = ?', [newPasswordHash])
+  queryRun('UPDATE users SET password_hash = ? WHERE id = ?', [newPasswordHash, user.id])
   return true
 }
 
 export function changePassword(currentPassword: string, newPassword: string): boolean {
+  const user = queryOne('SELECT id FROM users ORDER BY id DESC LIMIT 1') as { id: number } | undefined
+  if (!user) return false
   if (!verifyLogin(currentPassword)) return false
   const newPasswordHash = hashPassword(newPassword)
-  queryRun('UPDATE users SET password_hash = ?', [newPasswordHash])
+  queryRun('UPDATE users SET password_hash = ? WHERE id = ?', [newPasswordHash, user.id])
   return true
 }

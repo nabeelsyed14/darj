@@ -16,10 +16,10 @@ export function deleteSubject(id: number): void {
   queryRun('DELETE FROM subjects WHERE id = ?', [id])
 }
 
-export function createExam(schoolId: number, academicYear: string, name: string, examDate: string | null, examType: string = 'minor', weightPercentage: number = 100, classId?: number): number {
+export function createExam(schoolId: number, academicYear: string, name: string, examDate: string | null, examType: string = 'minor', weightPercentage: number = 100, classId?: number, maxMarks: number = 100): number {
   const result = queryRun(
-    'INSERT INTO exams (school_id, academic_year, name, exam_date, exam_type, weight_percentage, class_id, is_completed) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
-    [schoolId, academicYear, name, examDate, examType, weightPercentage, classId || null]
+    'INSERT INTO exams (school_id, academic_year, name, exam_date, exam_type, weight_percentage, class_id, max_marks, is_completed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)',
+    [schoolId, academicYear, name, examDate, examType, weightPercentage, classId || null, maxMarks]
   )
   return result.lastInsertRowid
 }
@@ -94,3 +94,30 @@ export function getClassMarks(classId: number, examId: number) {
   )
 }
 
+// Returns all marks for a school year — used for bulk pre-fetch to avoid N+1 loops
+export function getMarksBySchool(schoolId: number, academicYear: string) {
+  return queryAll(
+    `SELECT m.student_id, m.marks_obtained, m.is_pass,
+            sub.name as subject_name, sub.passing_marks,
+            e.name as exam_name, e.weight_percentage, e.is_completed
+     FROM marks m
+     JOIN exams e ON m.exam_id = e.id
+     JOIN subjects sub ON m.subject_id = sub.id
+     WHERE e.school_id = ? AND e.academic_year = ?`,
+    [schoolId, academicYear]
+  )
+}
+
+// Returns all marks for a class across all exams in a year — used by PromotionReview
+export function getMarksByClass(classId: number, academicYear: string) {
+  return queryAll(
+    `SELECT m.student_id, m.marks_obtained, m.max_marks, m.is_pass,
+            sub.name as subject_name, sub.passing_marks,
+            e.name as exam_name, e.weight_percentage
+     FROM marks m
+     JOIN exams e ON m.exam_id = e.id
+     JOIN subjects sub ON m.subject_id = sub.id
+     WHERE sub.class_id = ? AND e.academic_year = ?`,
+    [classId, academicYear]
+  )
+}

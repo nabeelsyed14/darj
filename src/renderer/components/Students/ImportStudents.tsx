@@ -84,6 +84,7 @@ export default function ImportStudents({ sections, onComplete }: ImportStudentsP
   const [showConfirm, setShowConfirm] = useState(false)
   const [showAutoCreate, setShowAutoCreate] = useState(false)
   const [missingClasses, setMissingClasses] = useState<GroupInfo[]>([])
+  const [duplicateCount, setDuplicateCount] = useState(0)
 
   useEffect(() => {
     if (!school) return
@@ -149,18 +150,33 @@ export default function ImportStudents({ sections, onComplete }: ImportStudentsP
         }
       })
     } else if (ext === 'xlsx' || ext === 'xls') {
-      const XLSX = await import('xlsx')
+      const ExcelJS = await import('exceljs')
       const buffer = await file.arrayBuffer()
-      const workbook = XLSX.read(buffer, { type: 'array' })
+      const workbook = new ExcelJS.Workbook()
+      await workbook.xlsx.load(buffer)
       const sheetList: SheetData[] = []
-      for (const name of workbook.SheetNames) {
-        const sheet = workbook.Sheets[name]
-        const json: any[] = XLSX.utils.sheet_to_json(sheet)
+      for (const ws of workbook.worksheets) {
+        const rows = ws.getSheetValues() as any[]
+        const headerRow = (rows[1] || []) as any[]
+        const cols = headerRow.slice(1).map((v: any) => String(v ?? '').trim()).filter(Boolean)
+        if (cols.length === 0) continue
+        const json: any[] = []
+        for (let r = 2; r <= ws.rowCount; r++) {
+          const row = ws.getRow(r)
+          const rowObj: Record<string, any> = {}
+          let hasValue = false
+          cols.forEach((col, idx) => {
+            const cellValue = row.getCell(idx + 1).value as any
+            const normalized = typeof cellValue === 'object' && cellValue?.text ? cellValue.text : cellValue
+            rowObj[col] = normalized ?? ''
+            if (normalized !== null && normalized !== undefined && String(normalized).trim() !== '') hasValue = true
+          })
+          if (hasValue) json.push(rowObj)
+        }
         if (json.length > 0) {
-          const cols = Object.keys(json[0] || {})
           const mapping: Record<string, string> = {}
           cols.forEach((c: string) => { const m = autoMatch(c); if (m) mapping[c] = m })
-          sheetList.push({ name, columns: cols, rows: json as Record<string, any>[], mapping, skippedColumns: [], newFieldColumns: {} })
+          sheetList.push({ name: ws.name, columns: cols, rows: json as Record<string, any>[], mapping, skippedColumns: [], newFieldColumns: {} })
         }
       }
       setSheets(sheetList)
@@ -224,8 +240,46 @@ export default function ImportStudents({ sections, onComplete }: ImportStudentsP
       setMissingClasses(missing)
       setShowAutoCreate(true)
     } else {
+      const dupes = await estimateDuplicates()
+      setDuplicateCount(dupes)
       setShowConfirm(true)
     }
+  }
+
+  const estimateDuplicates = async () => {
+    if (!school) return 0
+    const existingStudents = await window.api.students.getAllBySchool(school.id)
+    const existingByUid = new Set(existingStudents.map((s: any) => String(s.student_uid || '').trim().toLowerCase()).filter(Boolean))
+    const existingByNameDob = new Set(
+      existingStudents.map((s: any) => {
+        const name = String(s.field_values?.full_name || s.full_name || '').trim().toLowerCase()
+        const dob = String(s.field_values?.date_of_birth || '').trim()
+        return name && dob ? `${name}|${dob}` : ''
+      }).filter(Boolean)
+    )
+    const seenInFile = new Set<string>()
+    let duplicates = 0
+    for (const sh of sheets) {
+      for (const row of sh.rows) {
+        const uid = String(row.student_uid || row['Student ID'] || '').trim().toLowerCase()
+        const name = String(row['Full Name'] || row.full_name || '').trim().toLowerCase()
+        const dob = String(row['Date of Birth'] || row.date_of_birth || '').trim()
+        const nameDobKey = name && dob ? `${name}|${dob}` : ''
+        const fileDupKey = uid ? `uid:${uid}` : (nameDobKey ? `nd:${nameDobKey}` : '')
+        const isDup =
+          (uid && existingByUid.has(uid)) ||
+          (nameDobKey && existingByNameDob.has(nameDobKey)) ||
+          (fileDupKey && seenInFile.has(fileDupKey))
+        if (isDup) {
+          duplicates++
+          continue
+        }
+        if (uid) existingByUid.add(uid)
+        if (nameDobKey) existingByNameDob.add(nameDobKey)
+        if (fileDupKey) seenInFile.add(fileDupKey)
+      }
+    }
+    return duplicates
   }
 
   const handleAutoCreate = async () => {
@@ -245,6 +299,8 @@ export default function ImportStudents({ sections, onComplete }: ImportStudentsP
     }
     message.success(`Created ${missingClasses.length} missing class-sections`)
     setShowAutoCreate(false)
+    const dupes = await estimateDuplicates()
+    setDuplicateCount(dupes)
     setShowConfirm(true)
   }
 
@@ -272,6 +328,18 @@ export default function ImportStudents({ sections, onComplete }: ImportStudentsP
     setLoading(true)
     let newFieldCount = 0
     try {
+      const existingStudents = await window.api.students.getAllBySchool(school.id)
+      const existingByUid = new Set(existingStudents.map((s: any) => String(s.student_uid || '').trim().toLowerCase()).filter(Boolean))
+      const existingByNameDob = new Set(
+        existingStudents.map((s: any) => {
+          const name = String(s.field_values?.full_name || s.full_name || '').trim().toLowerCase()
+          const dob = String(s.field_values?.date_of_birth || '').trim()
+          return name && dob ? `${name}|${dob}` : ''
+        }).filter(Boolean)
+      )
+      const seenInFile = new Set<string>()
+      let skippedDuplicates = 0
+
       for (const sh of sheets) {
         if (sh.groups) {
           // Import grouped rows — each row goes to its group's section
@@ -290,6 +358,29 @@ export default function ImportStudents({ sections, onComplete }: ImportStudentsP
               const mappedCol = Object.entries(sh.mapping).find(([, v]) => v === f.field_key)?.[0]
               return { field_id: f.id, value: mappedCol ? row[mappedCol] || null : null }
             })
+
+            const valueByKey = new Map<string, any>()
+            for (const f of fields) {
+              const val = fieldValues.find((fv: any) => fv.field_id === f.id)?.value
+              valueByKey.set(f.field_key, val)
+            }
+            const uidCandidate = String(valueByKey.get('student_uid') || row.student_uid || row['Student ID'] || '').trim().toLowerCase()
+            const nameCandidate = String(valueByKey.get('full_name') || '').trim().toLowerCase()
+            const dobCandidate = String(valueByKey.get('date_of_birth') || '').trim()
+            const nameDobKey = nameCandidate && dobCandidate ? `${nameCandidate}|${dobCandidate}` : ''
+            const fileDupKey = uidCandidate ? `uid:${uidCandidate}` : (nameDobKey ? `nd:${nameDobKey}` : '')
+            const isDup =
+              (uidCandidate && existingByUid.has(uidCandidate)) ||
+              (nameDobKey && existingByNameDob.has(nameDobKey)) ||
+              (fileDupKey && seenInFile.has(fileDupKey))
+            if (isDup) {
+              skippedDuplicates++
+              continue
+            }
+            if (uidCandidate) existingByUid.add(uidCandidate)
+            if (nameDobKey) existingByNameDob.add(nameDobKey)
+            if (fileDupKey) seenInFile.add(fileDupKey)
+
             await window.api.students.create({
               school_id: school.id, section_id: sectionId,
               enrollment_date: new Date().toISOString().split('T')[0],
@@ -304,6 +395,29 @@ export default function ImportStudents({ sections, onComplete }: ImportStudentsP
               const mappedCol = Object.entries(sh.mapping).find(([, v]) => v === f.field_key)?.[0]
               return { field_id: f.id, value: mappedCol ? row[mappedCol] || null : null }
             })
+
+            const valueByKey = new Map<string, any>()
+            for (const f of fields) {
+              const val = fieldValues.find((fv: any) => fv.field_id === f.id)?.value
+              valueByKey.set(f.field_key, val)
+            }
+            const uidCandidate = String(valueByKey.get('student_uid') || row.student_uid || row['Student ID'] || '').trim().toLowerCase()
+            const nameCandidate = String(valueByKey.get('full_name') || '').trim().toLowerCase()
+            const dobCandidate = String(valueByKey.get('date_of_birth') || '').trim()
+            const nameDobKey = nameCandidate && dobCandidate ? `${nameCandidate}|${dobCandidate}` : ''
+            const fileDupKey = uidCandidate ? `uid:${uidCandidate}` : (nameDobKey ? `nd:${nameDobKey}` : '')
+            const isDup =
+              (uidCandidate && existingByUid.has(uidCandidate)) ||
+              (nameDobKey && existingByNameDob.has(nameDobKey)) ||
+              (fileDupKey && seenInFile.has(fileDupKey))
+            if (isDup) {
+              skippedDuplicates++
+              continue
+            }
+            if (uidCandidate) existingByUid.add(uidCandidate)
+            if (nameDobKey) existingByNameDob.add(nameDobKey)
+            if (fileDupKey) seenInFile.add(fileDupKey)
+
             await window.api.students.create({
               school_id: school.id, section_id: sh.sectionId,
               enrollment_date: new Date().toISOString().split('T')[0],
@@ -316,7 +430,9 @@ export default function ImportStudents({ sections, onComplete }: ImportStudentsP
       const { total, byClass } = buildSummary()
       const classList = Object.entries(byClass).map(([k, v]) => `${k} (${v})`).join(', ')
       const extra = newFieldCount > 0 ? ` ${newFieldCount} new custom field${newFieldCount > 1 ? 's' : ''} created.` : ''
-      message.success(`Imported ${total} students across ${Object.keys(byClass).length} class-sections: ${classList}.${extra}`)
+      const dupMsg = skippedDuplicates > 0 ? ` Skipped ${skippedDuplicates} duplicate row${skippedDuplicates > 1 ? 's' : ''}.` : ''
+      message.success(`Imported ${total - skippedDuplicates} students across ${Object.keys(byClass).length} class-sections: ${classList}.${extra}${dupMsg}`)
+      setDuplicateCount(skippedDuplicates)
       setShowConfirm(false)
       onComplete()
     } catch { message.error(t('errors.generic')) }
@@ -435,6 +551,13 @@ export default function ImportStudents({ sections, onComplete }: ImportStudentsP
       <Modal title="Confirm Import" open={showConfirm} onOk={handleImport} onCancel={() => setShowConfirm(false)} confirmLoading={loading} okText={`Import ${summary.total} Students`} width={600}>
         <Space direction="vertical" style={{ width: '100%' }}>
           <Text strong>Total: {summary.total} students</Text>
+          {duplicateCount > 0 && (
+            <Alert
+              type="warning"
+              showIcon
+              message={`${duplicateCount} potential duplicate row${duplicateCount > 1 ? 's' : ''} will be skipped during import`}
+            />
+          )}
           <Text>Class-section breakdown:</Text>
           {Object.entries(summary.byClass).map(([k, v]) => (
             <Text key={k} style={{ display: 'block', marginLeft: 12 }}>{k}: {v} students</Text>

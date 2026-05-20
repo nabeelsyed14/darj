@@ -26,7 +26,7 @@ export default function Settings() {
         academic_year: school.academic_year,
         uid_prefix: school.uid_prefix
       })
-      window.api.settings.get(school.id, 'final_class').then(setFinalClass)
+      window.api.settings.get(school.id, 'final_class').then((v) => setFinalClass(v ?? undefined))
       window.api.classes.get(school.id).then(setClasses)
     }
   }, [school])
@@ -39,7 +39,7 @@ export default function Settings() {
         id: school.id,
         name: values.name || school.name,
         address: values.address ?? '',
-        principal_name: school.principal_name || '',
+        principal_name: values.principal_name ?? school.principal_name ?? '',
         academic_year: values.academic_year || school.academic_year,
         uid_prefix: values.uid_prefix || school.uid_prefix
       })
@@ -112,11 +112,15 @@ export default function Settings() {
           <Form.Item name="address" label={t('wizard.step1.address')}>
             <Input.TextArea rows={2} />
           </Form.Item>
+          <Form.Item name="principal_name" label="Principal Name">
+            <Input />
+          </Form.Item>
           <Form.Item name="academic_year" label={t('wizard.step1.academicYear')}>
             <Select showSearch placeholder="Academic year" style={{ width: 200 }}
               options={(() => {
-                const startYear = 2020
-                return Array.from({ length: 80 }, (_, i) => {
+                const currentYear = new Date().getFullYear()
+                const startYear = currentYear - 5
+                return Array.from({ length: 11 }, (_, i) => {
                   const y = startYear + i
                   return { label: `${y}-${String(y+1).slice(2)}`, value: `${y}-${String(y+1).slice(2)}` }
                 })
