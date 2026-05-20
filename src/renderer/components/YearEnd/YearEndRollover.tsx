@@ -129,12 +129,9 @@ export default function YearEndRollover() {
 
     setArchiving(true)
     try {
-      // Ensure all saved promotions are materialized into student status/section
-      // before archiving and year switch.
-      await window.api.promotions.finalizeRollover(school.id, currentYear, finalClass)
-
-      await window.api.archives.archive(school.id, currentYear)
-
+      const allSections = await window.api.sections.getAll(school.id)
+      const sectionById = new Map<number, any>()
+      for (const sec of allSections) sectionById.set(sec.id, sec)
       const promotionsForYear = await window.api.promotions.getByYear(currentYear)
       const promotionByStudentId = new Map<number, any>()
       for (const p of promotionsForYear) {
@@ -174,6 +171,7 @@ export default function YearEndRollover() {
         }
 
         for (const sec of secs) {
+          // Important: use the source section roster for this academic year's report.
           const students = await window.api.students.getAllBySection(sec.id)
           if (students.length === 0) continue
 
@@ -195,18 +193,25 @@ export default function YearEndRollover() {
             }
             const pct = tW > 0 ? Math.round(wT / tW) : 0
             const promo = promotionByStudentId.get(s.id)
-            let result = 'Pending'
-            if (promo?.status === 'promoted' && promo?.reason) result = 'Exceptional'
-            else if (promo?.status === 'promoted') result = 'Promoted'
-            else if (promo?.status === 'failed') result = 'Failed'
-            const statusLabel =
-              s.status === 'active' ? 'Active'
-              : s.status === 'withdrawn' ? 'Withdrawn'
-              : s.status === 'on_leave' ? 'On Leave'
-              : s.status === 'transferred' ? 'Transferred'
-              : s.status === 'passed_out' ? 'Passed Out'
-              : s.status
-            return { student: s, pct, result, rawResult: result, status: statusLabel }
+            const destination = promo?.to_section_id ? sectionById.get(promo.to_section_id) : null
+            let rawResult = 'Pending'
+            if (promo?.status === 'promoted' && promo?.reason) {
+              rawResult = destination
+                ? `Exceptional - Going to ${destination.class_name} ${destination.name}`
+                : 'Exceptional - Passed Out'
+            } else if (promo?.status === 'promoted') {
+              rawResult = destination
+                ? `Promoted - Going to ${destination.class_name} ${destination.name}`
+                : 'Promoted - Passed Out'
+            } else if (promo?.status === 'failed') {
+              rawResult = `Failed - Staying in ${cls.name} ${sec.name}`
+            }
+            let statusLabel = 'Active'
+            if (promo?.status === 'promoted' && !promo?.to_section_id) statusLabel = 'Passed Out'
+            if (s.status === 'withdrawn') statusLabel = 'Withdrawn'
+            if (s.status === 'on_leave') statusLabel = 'On Leave'
+            if (s.status === 'transferred') statusLabel = 'Transferred'
+            return { student: s, pct, rawResult, status: statusLabel }
           })
 
           studentData.sort((a: any, b: any) => b.pct - a.pct)
@@ -221,6 +226,10 @@ export default function YearEndRollover() {
           })
         }
       }
+
+      // Persist yearly snapshot first, then move students for next year.
+      await window.api.archives.archive(school.id, currentYear)
+      await window.api.promotions.finalizeRollover(school.id, currentYear, finalClass)
 
       if (summaryData.length > 0) {
         const sws = wb.addWorksheet('Summary')

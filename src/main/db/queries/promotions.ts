@@ -33,9 +33,8 @@ export function getStudentPromotions(studentId: number) {
 
 export function finalizeRolloverForYear(schoolId: number, academicYear: string, finalClassName: string | null): void {
   const promotions = queryAll(
-    `SELECT p.student_id, p.status, p.to_section_id, st.section_id
+    `SELECT p.student_id, p.status, p.to_section_id, p.from_section_id
      FROM promotions p
-     JOIN students st ON st.id = p.student_id
      WHERE p.academic_year = ?`,
     [academicYear]
   )
@@ -57,7 +56,8 @@ export function finalizeRolloverForYear(schoolId: number, academicYear: string, 
       if (p.to_section_id) {
         queryRun("UPDATE students SET section_id = ?, status = 'active' WHERE id = ?", [p.to_section_id, p.student_id])
       } else {
-        const isFinalClassStudent = finalSectionIds.has(p.section_id)
+        // Evaluate against original section at decision time.
+        const isFinalClassStudent = finalSectionIds.has(p.from_section_id)
         if (isFinalClassStudent) {
           queryRun("UPDATE students SET status = 'passed_out' WHERE id = ?", [p.student_id])
         } else {

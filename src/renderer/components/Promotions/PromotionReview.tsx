@@ -114,8 +114,12 @@ export default function PromotionReview() {
     setSaving(true)
     try {
       const allClasses: any[] = await window.api.classes.get(school!.id)
-      const classNameToNext: Record<string, any> = {}
-      for (let i = 0; i < allClasses.length - 1; i++) classNameToNext[allClasses[i].name] = allClasses[i + 1]
+      const getNextClassByName = (className: string) => {
+        const m = className.match(/class\s*(\d+)/i)
+        if (!m) return null
+        const nextNum = Number(m[1]) + 1
+        return allClasses.find((c: any) => c.name.trim().toLowerCase() === `class ${nextNum}`.toLowerCase()) || null
+      }
 
       const sectionsByClassId: Record<number, any[]> = {}
       for (const cls of allClasses) sectionsByClassId[cls.id] = await window.api.sections.getByClass(cls.id)
@@ -127,7 +131,7 @@ export default function PromotionReview() {
         let toSectionId: number | null = null
         if (r.status === 'promoted') {
           const currentClass = allClasses.find((cls) => sectionsByClassId[cls.id]?.some((sec: any) => sec.id === st.section_id))
-          const nextClass = currentClass ? classNameToNext[currentClass.name] : null
+          const nextClass = currentClass ? getNextClassByName(currentClass.name) : null
           if (nextClass) {
             const currentSecName = sectionsByClassId[currentClass.id]?.find((s: any) => s.id === st.section_id)?.name
             const nextSections = sectionsByClassId[nextClass.id] || []
