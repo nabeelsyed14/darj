@@ -32,11 +32,11 @@ file holds all data. Backup is copying that file.
 ```mermaid
 graph TB
     A[React UI<br/>Ant Design] --> B[Preload Bridge<br/>contextBridge]
-    B --> C[Electron Main<br/>44 IPC Handlers]
+    B --> C[Electron Main<br/>79 IPC Handlers]
     C --> D[sql.js<br/>WASM SQLite]
     D --> E[data.db<br/>Single File]
-    C --> F[bcryptjs]
-    F --> G[Password Hash]
+    C --> F[bcryptjs + Crypto]
+    F --> G[Password + Recovery Key]
     C --> H[ExcelJS + PapaParse]
     H --> I[Import / Export]
 ```
@@ -109,7 +109,7 @@ row fills, gold/silver/bronze rank highlights, red rows for failed students.
 
 ## Database Schema
 
-17 tables, 4 runtime migrations, 8 indexes.
+16 tables, 6 runtime migrations, 8 indexes.
 
 | Table | Purpose | Key Columns |
 |---|---|---|
@@ -169,7 +169,7 @@ darj/
 ├── Darj_Sample_Import.xlsx          # 3-sheet sample for import testing
 ├── src/
 │   ├── main/                        # Electron main process
-│   │   ├── index.ts                 # Window creation + 44 IPC handlers + logging
+│   │   ├── index.ts                 # Window creation + 79 IPC handlers + logging
 │   │   ├── db/
 │   │   │   ├── connection.ts        # sql.js init + migration runner + query helpers
 │   │   │   ├── schema.sql           # 200 lines — 17 tables + migrations + indexes
@@ -178,7 +178,7 @@ darj/
 │   ├── preload/index.ts             # contextBridge — typed API surface
 │   └── renderer/                    # React app
 │       ├── main.tsx                 # Entry — HashRouter, ConfigProvider, ErrorBoundary
-│       ├── App.tsx                  # Routing — wizard → login → layout (13 routes)
+│       ├── App.tsx                  # Routing — wizard → login → layout (12 routes)
 │       ├── i18n/                    # en.json (243 keys) + hi.json (full Hindi)
 │       ├── store/                   # 4 Zustand stores (auth, school, ui, modules)
 │       ├── styles/                  # globals.css, tiles.css, animations.css, glass.css
